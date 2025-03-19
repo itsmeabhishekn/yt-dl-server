@@ -20,6 +20,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Root endpoint to check if the server is working
+app.get("/", (req, res) => {
+  res.send("Server is up and running!");
+});
+
 // Register Routes (Fixed: Added `/` in route paths)
 app.use("/api/search", searchRoutes);
 app.use("/api/formats", formatRoutes);
