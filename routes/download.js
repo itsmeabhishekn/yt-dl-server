@@ -1,11 +1,14 @@
 const express = require("express");
 const path = require("path");
-const fs = require("fs");
+const fs = require("fs").promises; // Using async/await-friendly fs
 const { execCommand } = require("../utils/execCommand");
 
 const router = express.Router();
 const DOWNLOADS_DIR = path.join(__dirname, "../downloads");
-const BROWSER_NAME = "chrome"; // Change this if using Firefox, Edge, or Brave
+
+// Optional: Set cookies file for authenticated downloads
+const COOKIES_FILE = path.join(__dirname, "../cookies.txt"); // Change if needed
+const USE_COOKIES = false; // Set to true if using authentication
 
 router.get("/", async (req, res) => {
   const { id } = req.query;
@@ -15,49 +18,60 @@ router.get("/", async (req, res) => {
   console.log(`📥 FLAC Download requested: ${url}`);
 
   try {
-    // Download using yt-dlp with browser cookies
-    const downloadCommand = `yt-dlp --cookies-from-browser ${BROWSER_NAME} -f bestaudio --extract-audio --audio-format flac -o "${DOWNLOADS_DIR}/%(title)s.%(ext)s" "${url}"`;
-    await execCommand(downloadCommand);
+    // Construct yt-dlp command
+    const downloadCommand = [
+      "yt-dlp",
+      "-f bestaudio",
+      "--extract-audio",
+      "--audio-format flac",
+      `-o "${DOWNLOADS_DIR}/%(title)s.%(ext)s"`,
+    ];
+
+    // Use cookies if enabled
+    if (USE_COOKIES) {
+      downloadCommand.push(`--cookies "${COOKIES_FILE}"`);
+    }
+
+    await execCommand(downloadCommand.join(" "));
     console.log("✅ yt-dlp download completed");
 
-    // Ensure file has been saved
+    // Wait a bit to ensure the file is written
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Locate the most recent .flac file
-    const files = fs.readdirSync(DOWNLOADS_DIR);
+    // Get the most recent FLAC file
+    const files = await fs.readdir(DOWNLOADS_DIR);
     const flacFiles = files.filter((file) => file.endsWith(".flac"));
 
     if (flacFiles.length === 0) {
       throw new Error("No FLAC file found after download.");
     }
 
-    // Get the latest file
-    const filePath = path.join(
-      DOWNLOADS_DIR,
-      flacFiles.sort((a, b) => {
-        return (
-          fs.statSync(path.join(DOWNLOADS_DIR, b)).mtimeMs -
-          fs.statSync(path.join(DOWNLOADS_DIR, a)).mtimeMs
-        );
-      })[0]
+    // Find the most recently modified file
+    const fileStats = await Promise.all(
+      flacFiles.map(async (file) => ({
+        file,
+        mtime: (await fs.stat(path.join(DOWNLOADS_DIR, file))).mtimeMs,
+      }))
     );
+    const latestFile = fileStats.sort((a, b) => b.mtime - a.mtime)[0].file;
+    const filePath = path.join(DOWNLOADS_DIR, latestFile);
 
     console.log(`📂 Identified FLAC file: ${filePath}`);
 
-    // Send file to client
-    res.download(filePath, path.basename(filePath), (err) => {
+    // Send the file to the client
+    res.download(filePath, latestFile, async (err) => {
       if (err) {
         console.error("❌ Error sending file:", err);
-        return;
+        return res.status(500).json({ error: "Error sending file" });
       }
 
       // Delete file after 1 minute
-      setTimeout(() => {
-        if (fs.existsSync(filePath)) {
-          fs.unlink(filePath, (err) => {
-            if (err) console.error("❌ Error deleting file:", err);
-            else console.log(`🗑️ Deleted file: ${filePath}`);
-          });
+      setTimeout(async () => {
+        try {
+          await fs.unlink(filePath);
+          console.log(`🗑️ Deleted file: ${filePath}`);
+        } catch (err) {
+          console.error("❌ Error deleting file:", err);
         }
       }, 60000);
     });
