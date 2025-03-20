@@ -8,7 +8,7 @@ const DOWNLOADS_DIR = path.join(__dirname, "../downloads");
 
 // Optional: Set cookies file for authenticated downloads
 const COOKIES_FILE = path.join(__dirname, "../cookies.txt");
-const USE_COOKIES = false;
+const USE_COOKIES = true;
 
 router.get("/", async (req, res) => {
   const { id } = req.query;
