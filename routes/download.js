@@ -18,14 +18,17 @@ router.get("/", async (req, res) => {
   console.log(`📥 FLAC Download requested: ${url}`);
 
   try {
-    // Construct yt-dlp command (fix: add url)
+    // Construct yt-dlp command (fix: use array format properly)
     const downloadCommand = [
       "yt-dlp",
-      "-f bestaudio",
+      "-f",
+      "bestaudio",
       "--extract-audio",
-      "--audio-format flac",
-      `-o '${DOWNLOADS_DIR}/%(title)s.%(ext)s'`, // <-- Wrap with single quotes
-      `"${url}"`, // <-- Wrap URL in quotes for safety
+      "--audio-format",
+      "flac",
+      "-o",
+      path.join(DOWNLOADS_DIR, "%(title)s.%(ext)s"),
+      url, // No need for extra quotes here
     ];
 
     if (USE_COOKIES) {
@@ -33,7 +36,8 @@ router.get("/", async (req, res) => {
     }
 
     console.log("🚀 Running command:", downloadCommand.join(" "));
-    await execCommand(downloadCommand.join(" "));
+    await execCommand(downloadCommand); // Pass as an array
+
     console.log("✅ yt-dlp download completed");
 
     // Wait to ensure file write
