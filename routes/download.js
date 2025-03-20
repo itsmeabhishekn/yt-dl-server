@@ -6,9 +6,9 @@ const { execCommand } = require("../utils/execCommand");
 const router = express.Router();
 const DOWNLOADS_DIR = path.join(__dirname, "../downloads");
 
-// Optional: Set cookies file for authenticated downloads
-const COOKIES_FILE = path.join(__dirname, "./cookies.txt");
-const USE_COOKIES = true;
+// Authentication parameters
+const VISITOR_DATA = "TF2NRPdlZv0";
+const EXTRACTOR_ARGS = `--extractor-args "youtubetab:skip=webpage" --extractor-args "youtube:player_skip=webpage,configs;visitor_data=${VISITOR_DATA}"`;
 
 router.get("/", async (req, res) => {
   const { id } = req.query;
@@ -28,12 +28,9 @@ router.get("/", async (req, res) => {
       "flac",
       "-o",
       path.join(DOWNLOADS_DIR, "%(title)s.%(ext)s"),
+      EXTRACTOR_ARGS,
       url, // No need for extra quotes here
     ];
-
-    if (USE_COOKIES) {
-      downloadCommand.push("--cookies", COOKIES_FILE);
-    }
 
     console.log("🚀 Running command:", downloadCommand.join(" "));
     await execCommand(downloadCommand); // Pass as an array
