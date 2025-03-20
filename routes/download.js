@@ -21,14 +21,11 @@ router.get("/", async (req, res) => {
     // Construct yt-dlp command (fix: add url)
     const downloadCommand = [
       "yt-dlp",
-      "-f",
-      "bestaudio",
+      "-f bestaudio",
       "--extract-audio",
-      "--audio-format",
-      "flac",
-      "-o",
-      path.join(DOWNLOADS_DIR, "%(title)s.%(ext)s"),
-      url, // ✅ Add the URL to the command
+      "--audio-format flac",
+      `-o '${DOWNLOADS_DIR}/%(title)s.%(ext)s'`, // <-- Wrap with single quotes
+      `"${url}"`, // <-- Wrap URL in quotes for safety
     ];
 
     if (USE_COOKIES) {
