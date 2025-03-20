@@ -12,7 +12,7 @@ RUN npm install --omit=dev
 COPY . .
 
 # Expose correct port
-EXPOSE 8000  # Make sure this matches docker-compose.yml
+EXPOSE 8000
 
 # Start server
 CMD ["node", "server.js"]
